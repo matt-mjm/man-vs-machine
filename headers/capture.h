@@ -3,86 +3,88 @@
 
 #include "core.h"
 
-// https://stackoverflow.com/questions/24720451/save-hbitmap-to-bmp-file-using-only-win32
-BOOL SaveHBITMAPToFile(HBITMAP hBitmap, LPCTSTR lpszFileName)
-{
-    HDC hDC;
-    int iBits;
-    WORD wBitCount;
-    DWORD dwPaletteSize = 0, dwBmBitsSize = 0, dwDIBSize = 0, dwWritten = 0;
-    BITMAP Bitmap0;
-    BITMAPFILEHEADER bmfHdr;
-    BITMAPINFOHEADER bi;
-    LPBITMAPINFOHEADER lpbi;
-    HANDLE fh, hDib, hPal, hOldPal2 = NULL;
-    hDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
-    iBits = GetDeviceCaps(hDC, BITSPIXEL) * GetDeviceCaps(hDC, PLANES);
-    DeleteDC(hDC);
-    if (iBits <= 1)
-        wBitCount = 1;
-    else if (iBits <= 4)
-        wBitCount = 4;
-    else if (iBits <= 8)
-        wBitCount = 8;
-    else
-        wBitCount = 24;
-    GetObject(hBitmap, sizeof(Bitmap0), (LPSTR)&Bitmap0);
-    bi.biSize = sizeof(BITMAPINFOHEADER);
-    bi.biWidth = Bitmap0.bmWidth;
-    bi.biHeight = -Bitmap0.bmHeight;
-    bi.biPlanes = 1;
-    bi.biBitCount = wBitCount;
-    bi.biCompression = BI_RGB;
-    bi.biSizeImage = 0;
-    bi.biXPelsPerMeter = 0;
-    bi.biYPelsPerMeter = 0;
-    bi.biClrImportant = 0;
-    bi.biClrUsed = 256;
-    dwBmBitsSize = ((Bitmap0.bmWidth * wBitCount + 31) & ~31) / 8
-        * Bitmap0.bmHeight;
-    hDib = GlobalAlloc(GHND, dwBmBitsSize + dwPaletteSize + sizeof(BITMAPINFOHEADER));
-    lpbi = (LPBITMAPINFOHEADER)GlobalLock(hDib);
-    *lpbi = bi;
+// https://learn.microsoft.com/en-us/windows/win32/gdi/capturing-an-image
+void CaptureSave(
+    HDC hdc, HBITMAP hBmp,
+    LPCSTR filename
+) {
+    BITMAP bmp;
+    BITMAPINFOHEADER bmpInfo;
+    BITMAPFILEHEADER bmpFile;
 
-    hPal = GetStockObject(DEFAULT_PALETTE);
-    if (hPal)
-    {
-        hDC = GetDC(NULL);
-        hOldPal2 = SelectPalette(hDC, (HPALETTE)hPal, FALSE);
-        RealizePalette(hDC);
+    HANDLE hFile = NULL;
+    HANDLE hDIB = NULL;
+    LPVOID lpBmp = NULL;
+    DWORD dwBytesWritten = 0;
+    DWORD dwSizeofDIB = 0;
+    DWORD dwBmpSize = 0;
+
+    memset(&bmp, 0, sizeof(BITMAP));
+    memset(&bmpInfo, 0, sizeof(BITMAPINFOHEADER));
+    memset(&bmpFile, 0, sizeof(BITMAPFILEHEADER));
+
+    GetObject(hBmp, sizeof(BITMAP), &bmp);
+
+    bmpInfo.biSize = sizeof(BITMAPINFOHEADER);
+    bmpInfo.biWidth = bmp.bmWidth;
+    bmpInfo.biHeight = bmp.bmHeight;
+    bmpInfo.biPlanes = 1;
+    bmpInfo.biBitCount = 32;
+    bmpInfo.biCompression = BI_RGB;
+    bmpInfo.biSizeImage = 0;
+    bmpInfo.biXPelsPerMeter = 0;
+    bmpInfo.biYPelsPerMeter = 0;
+    bmpInfo.biClrUsed = 0;
+    bmpInfo.biClrImportant = 0;
+
+    dwBmpSize = ((bmpInfo.biWidth * bmpInfo.biBitCount + 31) / 32) * 4 * bmpInfo.biHeight;
+
+    hDIB = GlobalAlloc(GHND, dwBmpSize);
+    lpBmp = GlobalLock(hDIB);
+
+    GetDIBits(
+        hdc, hBmp, 0, bmpInfo.biHeight, lpBmp,
+        (BITMAPINFO *)&bmpInfo, DIB_RGB_COLORS
+    );
+
+    hFile = CreateFile(
+        filename, GENERIC_WRITE, 0, NULL,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
+    );
+
+    dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+    bmpFile.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
+    bmpFile.bfSize = dwSizeofDIB;
+    bmpFile.bfType = 0x4d42; // BM
+
+    WriteFile(hFile, (LPSTR)&bmpFile, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
+    WriteFile(hFile, (LPSTR)&bmpInfo, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
+    WriteFile(hFile, (LPSTR)lpBmp, dwBmpSize, &dwBytesWritten, NULL);
+
+    CloseHandle(hFile);
+
+    GlobalUnlock(hDIB);
+    GlobalFree(hDIB);
+}
+
+uint32_t *CapturePixels(
+    HBITMAP hBmp
+) {
+    BITMAP bmp;
+    GetObject(hBmp, sizeof(BITMAP), &bmp);
+
+    DWORD numPixels = sizeof(uint32_t) * bmp.bmWidth * bmp.bmHeight;
+    uint32_t *pixels = (uint32_t *)malloc(numPixels);
+    if (pixels == NULL) {
+        return NULL;
     }
 
+    LONG board_len = GetBitmapBits(
+        hBmp, numPixels, pixels
+    );
 
-    GetDIBits(hDC, hBitmap, 0, (UINT)Bitmap0.bmHeight, (LPSTR)lpbi + sizeof(BITMAPINFOHEADER)
-        + dwPaletteSize, (BITMAPINFO *)lpbi, DIB_RGB_COLORS);
-
-    if (hOldPal2)
-    {
-        SelectPalette(hDC, (HPALETTE)hOldPal2, TRUE);
-        RealizePalette(hDC);
-        ReleaseDC(NULL, hDC);
-    }
-
-    fh = CreateFile(lpszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-
-    if (fh == INVALID_HANDLE_VALUE)
-        return FALSE;
-
-    bmfHdr.bfType = 0x4D42; // "BM"
-    dwDIBSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + dwPaletteSize + dwBmBitsSize;
-    bmfHdr.bfSize = dwDIBSize;
-    bmfHdr.bfReserved1 = 0;
-    bmfHdr.bfReserved2 = 0;
-    bmfHdr.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER) + dwPaletteSize;
-
-    WriteFile(fh, (LPSTR)&bmfHdr, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
-
-    WriteFile(fh, (LPSTR)lpbi, dwDIBSize, &dwWritten, NULL);
-    GlobalUnlock(hDib);
-    GlobalFree(hDib);
-    CloseHandle(fh);
-    return TRUE;
+    return pixels;
 }
 
 #endif // !MVM_CAPTURE_H
