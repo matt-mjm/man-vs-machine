@@ -68,23 +68,14 @@ void CaptureSave(
     GlobalFree(hDIB);
 }
 
-uint32_t *CapturePixels(
-    HBITMAP hBmp
+LONG CapturePixels(
+    HBITMAP hBmp, uint32_t *pixels, DWORD numPixels
 ) {
-    BITMAP bmp;
-    GetObject(hBmp, sizeof(BITMAP), &bmp);
-
-    DWORD numPixels = sizeof(uint32_t) * bmp.bmWidth * bmp.bmHeight;
-    uint32_t *pixels = (uint32_t *)malloc(numPixels);
-    if (pixels == NULL) {
-        return NULL;
-    }
-
-    LONG board_len = GetBitmapBits(
-        hBmp, numPixels, pixels
+    LONG numBits = GetBitmapBits(
+        hBmp, sizeof(uint32_t) * numPixels, pixels
     );
 
-    return pixels;
+    return numBits;
 }
 
 #endif // !MVM_CAPTURE_H

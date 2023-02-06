@@ -1,3 +1,5 @@
+// https://en.gamesaien.com/game/color_tiles
+
 #include "core.h"
 #include "capture.h"
 #include "controll.h"
@@ -23,7 +25,7 @@ void ClickBoard(boardinfo_t *boardinfo, int x, int y) {
         boardinfo->boardX + boardinfo->tileW / 2 + boardinfo->tileW * x,
         boardinfo->boardY + boardinfo->tileH / 2 + boardinfo->tileH * y
     );
-    Sleep(15);
+    Sleep(100);
 }
 
 void UpdateTile(tile_t *tiles, tile_t *tile, int x, int y, int width, int height) {
@@ -165,17 +167,18 @@ int main(int argc, char *argv[]) {
         SRCCOPY
     );
 
-    uint32_t *pixels = CapturePixels(stretchBmp);
+    uint32_t *pixels = (uint32_t *)malloc(sizeof(uint32_t) * stretchW * stretchH);
+    if (pixels == NULL) {
+        return 1;
+    }
+
+    CapturePixels(stretchBmp, pixels, stretchW * stretchH);
 
     ReleaseDC(desktop, desktopDC);
     DeleteDC(captureDC);
     DeleteDC(stretchDC);
     DeleteObject(captureBmp);
     DeleteObject(stretchBmp);
-
-    if (pixels == NULL) {
-        return 1;
-    }
 
     for (int i = 0; i < stretchW * stretchH; i++) {
         if (pixels[i] == 0xffebeded || pixels[i] == 0xfff5f7f7) {
