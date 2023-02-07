@@ -141,6 +141,7 @@ uint8_t SolveBoard(
         UpdateBoard(localBoard);
 
         localScore += (count - 2) * (count - 2);
+        // localScore += count;
     }
 
     *totalScore = localScore;
@@ -150,7 +151,7 @@ uint8_t SolveBoard(
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    if (argc < 7) {
+    if (argc < 10) {
         return 1;
     }
 
@@ -224,7 +225,7 @@ solution_start:
     }
 
     if (totalScore < targetScore) {
-        if (retry_count++ < 1000) {
+        if (retry_count++ < 10000) {
             goto solution_start;
         } else {
             ClickAt(restartX, restartY);
