@@ -1,6 +1,6 @@
 #include "core.h"
 #include "capture.h"
-#include "controll.h"
+#include "control.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 7) {

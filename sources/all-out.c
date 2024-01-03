@@ -2,7 +2,7 @@
 
 #include "core.h"
 #include "capture.h"
-#include "controll.h"
+#include "control.h"
 
 #define NUM_BITS (25)
 #define NUM_STATES (1 << NUM_BITS)
@@ -50,22 +50,7 @@ void Prepare(void) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    int captureX = 1233;
-    int captureY = 557;
-    int captureW = 350;
-    int captureH = 350;
-    int stretchW = 5;
-    int stretchH = 5;
-    int tileW = captureW / stretchW;
-    int tileH = captureH / stretchH;
-    int nextX = 1500;
-    int nextY = 500;
-
-    Prepare();
-
-    for (int iter = 0; iter < 102; iter++) {
-
+void Capture(uint32_t *pixels, int captureX, int captureY, int captureW, int captureH, int stretchW, int stretchH) {
     HWND desktop = GetDesktopWindow();
     HDC desktopDC = GetWindowDC(desktop);
 
@@ -93,7 +78,7 @@ int main(int argc, char *argv[]) {
         SRCCOPY
     );
 
-    uint32_t pixels[NUM_BITS];
+
     CapturePixels(stretchBmp, pixels, NUM_BITS);
 
     ReleaseDC(desktop, desktopDC);
@@ -101,35 +86,61 @@ int main(int argc, char *argv[]) {
     DeleteDC(stretchDC);
     DeleteObject(captureBmp);
     DeleteObject(stretchBmp);
+}
 
-    uint32_t state = 0;
-    for (uint32_t i = 0; i < NUM_BITS; i++) {
-        if (pixels[i] == 0xFFCEF5CE) {
-            state ^= 1 << i;
+int main(int argc, char *argv[]) {
+    if (argc < 9) {
+        return 1;
+    }
+
+    int captureX = atoi(argv[1]);
+    int captureY = atoi(argv[2]);
+    int captureW = atoi(argv[3]);
+    int captureH = atoi(argv[4]);
+    int stretchW = atoi(argv[5]);
+    int stretchH = atoi(argv[6]);
+    int nextX = atoi(argv[7]);
+    int nextY = atoi(argv[8]);
+    int tileW = captureW / stretchW;
+    int tileH = captureH / stretchH;
+    uint32_t pixels[NUM_BITS];
+
+    Prepare();
+
+    Capture(pixels, captureX, captureY, captureW, captureH, stretchW, stretchH);
+    uint32_t dark = pixels[0];
+
+    for (int iter = 0; iter < 102; iter++) {
+        Capture(pixels, captureX, captureY, captureW, captureH, stretchW, stretchH);
+
+        uint32_t state = 0;
+        for (uint32_t i = 0; i < NUM_BITS; i++) {
+            if (pixels[i] != dark) {
+                state ^= 1 << i;
+            }
         }
-    }
 
-    while (state != 0) {
-        uint8_t move = STATES[state];
-        if (move < NUM_BITS) {
-            state = Step(state, move);
-        } else {
-            printf("Error\n");
-            break;
+        while (state != 0) {
+            uint8_t move = STATES[state];
+            if (move < NUM_BITS) {
+                state = Step(state, move);
+            } else {
+                printf("Error\n");
+                break;
+            }
+
+            ClickAt(
+                captureX + tileW / 2 + (move % 5) * tileW,
+                captureY + tileH / 2 + (move / 5) * tileH
+            );
+
+            Sleep(10);
         }
 
-        ClickAt(
-            captureX + tileW / 2 + (move % 5) * tileW,
-            captureY + tileH / 2 + (move / 5) * tileH
-        );
-        Sleep(10);
-    }
-
-    if (iter < 101) {
-    ClickAt(nextX, nextY);
-    Sleep(20);
-    }
-
+        if (iter < 101) {
+            ClickAt(nextX, nextY);
+            Sleep(20);
+        }
     }
 
     return 0;

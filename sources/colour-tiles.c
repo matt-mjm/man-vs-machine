@@ -2,7 +2,7 @@
 
 #include "core.h"
 #include "capture.h"
-#include "controll.h"
+#include "control.h"
 
 typedef struct boardinfo_s boardinfo_t;
 struct boardinfo_s {

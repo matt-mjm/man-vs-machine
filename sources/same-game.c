@@ -2,7 +2,7 @@
 
 #include "core.h"
 #include "capture.h"
-#include "controll.h"
+#include "control.h"
 
 #define BOARD_W 16
 #define BOARD_H 12

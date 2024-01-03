@@ -1,5 +1,5 @@
-#ifndef MVM_CONTROLL_H
-#define MVM_CONTROLL_H
+#ifndef MVM_CONTROL_H
+#define MVM_CONTROL_H
 
 #include "core.h"
 
@@ -55,4 +55,4 @@ void ClickAt(int x, int y) {
     SendInput(3, inputs, sizeof(INPUT));
 }
 
-#endif // !MVM_CONTROLL_H
+#endif // !MVM_CONTROL_H
